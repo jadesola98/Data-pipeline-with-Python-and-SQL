@@ -15,6 +15,9 @@ API_HOST        =   os.getenv("API_HOST")
 LEAGUE_ID       =	os.getenv("LEAGUE_ID")
 SEASON			=	os.getenv("SEASON")
 
+## Set up logger
+logging.basicConfig(level=logging.DEBUG, format = '%(asctime)s - %(levelname)s - %(message)s')
+
 ##Define API endpoints, headers and query parameters
 url = "https://api-football-v1.p.rapidapi.com/v3/standings"
 querystring = {"season":SEASON, "league":LEAGUE_ID}
