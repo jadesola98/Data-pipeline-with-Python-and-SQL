@@ -6,7 +6,7 @@ import psycopg2
 import pandas as pd 
 from dotenv import load_dotenv
 from requests.exceptions import RequestException
-from sqlalchemy import create_engine, Integer, String
+from sqlalchemy import create_engine, Integer, String, text
 
 ## Load environment variables
 load_dotenv()
