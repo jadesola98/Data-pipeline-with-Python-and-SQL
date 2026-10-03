@@ -2,8 +2,6 @@
 
 A Python ETL pipeline that pulls Premier League standings from a REST API, flattens the nested JSON into a table, loads it into PostgreSQL, builds a ranked SQL view, and serves the result in an interactive Streamlit dashboard.
 
-![App screenshot](app-screenshot.png)
-
 ## Tech stack
 
 Python · Requests · pandas · SQLAlchemy · PostgreSQL · Streamlit · Plotly
