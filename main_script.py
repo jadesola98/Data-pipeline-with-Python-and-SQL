@@ -2,10 +2,9 @@
 import os
 import logging 
 import requests 
-import psycopg2
 import pandas as pd 
 from dotenv import load_dotenv
-from requests.exceptions import RequestException
+from requests.exceptions import HTTPError, Timeout, RequestException
 from sqlalchemy import create_engine, Integer, String, text
 
 ## Load environment variables
@@ -47,19 +46,19 @@ headers = {
 ## Send the API request with exception handling
 try:
     api_response = requests.get(url, headers=headers, params=querystring, timeout=20)
-    api_response.raise_for_status() 
-
+    api_response.raise_for_status()
 
 except HTTPError as http_err:
     logger.error(f'HTTP error occurred: {http_err}')
-
+    raise SystemExit(1)
 
 except Timeout:
     logger.error('Request timed out after 20 seconds')
-
+    raise SystemExit(1)
 
 except RequestException as request_err:
     logger.error(f'Request error occurred: {request_err}')
+    raise SystemExit(1)
 
 
 ## Parse the API response
@@ -114,6 +113,11 @@ dtype = {
     'points': Integer
 }
 
+
+with engine.connect() as connection:
+    with connection.begin():
+        connection.execute(text("DROP VIEW IF EXISTS premier_league_standings_vw;"))
+
 # Write DataFrame to PostgreSQL table
 try:
     df.to_sql(table_name, engine, if_exists='replace', index=False, dtype=dtype)
@@ -134,13 +138,15 @@ print(table_df)
 ranked_standings_view_query = """
 CREATE OR REPLACE VIEW premier_league_standings_vw AS 
 SELECT 
-    RANK() OVER (ORDER BY wins DESC, draws DESC, losses ASC) AS position,
+    RANK() OVER (ORDER BY points DESC, goal_difference DESC, goals_for DESC) AS position,
     team,
     games_played,
     wins,
     draws,
     losses,
-    points
+    points,
+    goal_difference,
+    goals_for
 FROM 
     premier_league_standings;
 
