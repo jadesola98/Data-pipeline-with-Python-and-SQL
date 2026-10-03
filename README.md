@@ -9,7 +9,7 @@ Python · Requests · pandas · SQLAlchemy · PostgreSQL · Streamlit · Plotly
 ## How it works
 
 ```mermaid
-flowchart LR
+flowchart TB
     A[API-Football<br/>RapidAPI] -- extract --> B[main_script.py]
     B -- transform<br/>flatten JSON --> C[pandas DataFrame]
     C -- load --> D[(PostgreSQL<br/>premier_league_standings)]
