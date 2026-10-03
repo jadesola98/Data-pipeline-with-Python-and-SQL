@@ -1,74 +1,69 @@
-## Import required dependencies
+"""
+Streamlit app that displays the Premier League standings loaded by main_script.py.
+
+Run with:  streamlit run app.py
+"""
 
 import os
-import psycopg2
-import pandas as pd 
-from PIL import Image
-import streamlit as st
+
+import pandas as pd
 import plotly.express as px
+import streamlit as st
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, Integer, String
+from sqlalchemy import create_engine
 
 
-# load environment variables
+## Page configuration (must be the first Streamlit command)
+st.set_page_config(
+    page_title="Premier League Standings 2020/21",
+    page_icon="⚽",
+    layout="wide",
+)
+
+
+## Load environment variables
 load_dotenv()
 
-API_KEY         =   os.getenv("API_KEY")
-API_HOST        =   os.getenv("API_HOST")
-DB_NAME         =   os.getenv("DB_NAME")
-DB_USER         =   os.getenv("DB_USER")
-DB_PASS         =   os.getenv("DB_PASS")
-DB_HOST         =   os.getenv("DB_HOST")
-DB_PORT         =   int(os.getenv("DB_PORT"))
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASS = os.getenv("DB_PASS")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = int(os.getenv("DB_PORT", "5432"))
+
+VIEW_NAME = "premier_league_standings_vw"
 
 
-# Create the database connection string
-connection_string = f'postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
-
-# Create the sqlalchemy engine
-engine = create_engine(connection_string)
-
-# Query to view the newly created table
-query = f'SELECT * FROM public.premier_league_standings_vw'
-# Execute the query and store the result in a DataFrame for easy viewing
-premier_league_standings = pd.read_sql(query, engine)
-
-# Set the page configuration of the app
-st.set_page_config(
-    page_title   =  "Premier League Standings 2023/24",
-    page_icon    =  "⚽",
-    layout       =  "wide"
-)
-
-# Read image into app
-prem_league_logo_filepath  =  "premier_league_logo.png"
-prem_league_logo_image     =  Image.open(prem_league_logo_filepath)
+@st.cache_data(ttl=600)
+def load_standings():
+    """Read the ranked view from PostgreSQL. Cached for 10 minutes so the
+    database isn't queried again every time someone clicks in the app."""
+    connection_string = f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    engine = create_engine(connection_string)
+    return pd.read_sql(f"SELECT * FROM public.{VIEW_NAME} ORDER BY position", engine)
 
 
-# Create columns for the layout and display the image through the 2nd one
-col1, col2 = st.columns([4, 1])
-col2.image(prem_league_logo_image)
+try:
+    standings = load_standings()
+except Exception as e:
+    st.error(f"Could not load standings from the database. Has main_script.py been run? ({e})")
+    st.stop()
 
 
-st.title("🏆Premier League Table Standings 2020/21🏆")
-st.write("The app showcases the current Premier League standings for the 2020/21 season in the table below.")
+st.title("🏆 Premier League Standings 2020/21")
+st.write("Final league table for the 2020/21 season, loaded from PostgreSQL by the pipeline in main_script.py.")
 
-# Display instructions
-show_visualization = st.sidebar.radio('Would you like to view the standings as a visualization too?', ('No', 'Yes'))
-fig_specification  = px.bar(premier_league_standings, 
-                        x           =   'team', 
-                        y           =   'points', 
-                        title       =   'Premier League Standings 2020/21', 
-                        labels      =   {'points':'Points', 'team':'Team', 'wins': 'Wins', 'losses': 'Losses'},
-                        color       =   'team',
-                        height      =   600,
-                        hover_data  =   ['wins', 'losses']
-)
+st.dataframe(standings, hide_index=True, use_container_width=True)
 
-if show_visualization == 'Yes':
-    st.table(premier_league_standings)
-    st.write("")
-    fig = fig_specification 
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.table(premier_league_standings)
+show_chart = st.sidebar.radio("Show points as a chart?", ("No", "Yes"))
+
+if show_chart == "Yes":
+    fig = px.bar(
+        standings,
+        x="team",
+        y="points",
+        title="Points by team, 2020/21",
+        labels={"points": "Points", "team": "Team", "wins": "Wins", "losses": "Losses"},
+        hover_data=["wins", "draws", "losses", "goal_difference"],
+        height=600,
+    )
+    st.plotly_chart(fig)
